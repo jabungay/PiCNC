@@ -1,0 +1,28 @@
+{
+  "name": "picnc",
+  "version": "1.0.0",
+  "description": "Control grbl with a Raspberry Pi Over Serial",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jabungay/PiCNC.git"
+  },
+  "author": "Jonathan Bungay",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jabungay/PiCNC/issues"
+  },
+  "homepage": "https://github.com/jabungay/PiCNC#readme",
+  "dependencies": {
+    "express": "^4.17.1"
+  },
+  "devDependencies": {
+    "eslint": "^7.4.0"
+  },
+  "scripts": {
+    "lint": "eslint src/js"
+  }
+}
