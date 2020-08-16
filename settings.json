@@ -1,0 +1,4 @@
+{
+    "port":"/dev/ttyS0",
+    "travel-distance": 10
+}

@@ -1,4 +1,8 @@
 extends default.pug
 
 block content 
-	p hello world
+	.control
+		input(type='button' value='up'    onclick='pressdir("up")')
+		input(type='button' value='down'  onclick='pressdir("down")')
+		input(type='button' value='left'  onclick='pressdir("left")')
+		input(type='button' value='right' onclick='pressdir("right")')
