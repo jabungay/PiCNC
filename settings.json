@@ -1,4 +1,1 @@
-{
-    "port":"/dev/ttyS0",
-    "travel-distance": 10
-}
+{"port":"/dev/ttyS0","baud-rate":115200,"travel-distance":100}

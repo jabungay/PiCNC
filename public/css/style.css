@@ -1,0 +1,33 @@
+:root /* Global variable list */
+{
+    --btn-colour: rgb(26, 134, 197);
+    --btn-colour-hover: rgb(180, 227, 255);
+}
+
+.ctrlbtn
+{
+    color: white;
+    background-color: var(--btn-colour);
+    
+    border: none;
+    padding: 15px 32px;
+    display: inline-block;
+    margin: 5px;
+    border-radius: 8px;
+
+    text-align: center;
+    text-decoration: none;
+    
+    font-size: 16px;
+
+    border: 2px solid var(--btn-colour);;
+
+    transition-duration: 0.25s;
+}
+
+.ctrlbtn:hover
+{
+    color: rgb(64, 64, 64);
+    background-color: var(--btn-colour-hover);
+}
+

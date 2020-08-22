@@ -1,7 +1,15 @@
 
-function pressdir(direction)
+function moveDir(direction)
 {
-    $.post("/test", {'dir': direction}, function(data, status) {
-        console.log(direction);
+    $.post("/movedir", {'dir': direction}, (data, status) => {
+
+    });
+}
+
+function setDistance(distance)
+{
+    $.post("/setdistance", {'dist': distance}, (data, status) => {
+        console.log(data);
+        console.log(status);
     });
 }
