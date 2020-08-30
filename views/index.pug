@@ -1,5 +1,7 @@
 extends default.pug
 
+
+
 block content 
 	.directions
 		.axis#Z
@@ -18,6 +20,9 @@ block content
 		input.ctrlbtn.dir#100mm(type='button' value='100 mm' onclick='setDistance(100)')
 	.addfile
 		form(action="/upload-file" method="POST" enctype="multipart/form-data")
-			input(type="file" name="gcodefile")
-			input(type="submit")
-			
+			input.fileupload(type="file" name="gcodefile")
+			input.ctrlbtn(type="submit")
+	.filelist#filelist
+	
+append endScripts
+	script(src="/js/getData.js")

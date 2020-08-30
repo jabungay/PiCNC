@@ -3,9 +3,11 @@ html
 	head
 		title #{title}
 		link(rel='stylesheet', href='/css/style.css')
-		script(src='http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js' type='text/javascript')
-		script(src='/js/controls.js')
+		block startScripts
+			script(src='http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js' type='text/javascript')
+			script(src='/js/controls.js')
 	body
 		block header
 		block content
 		block footer	
+	block endScripts
