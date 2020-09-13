@@ -22,32 +22,45 @@ var filedata = JSON.parse(filedataRaw);
 ////////////////////
 // Serial Port Config
 ////////////////////
-var connectedToSerial = false;
-var sendingGcodeFile = false; // Flag if a file send is in progress (false == paused OR stopped), depending on length of send buffer
-var serialBufferRx    = [];	  // Rx buffer from serial port
-var gcodeFileTxBuffer = [];   // Tx buffer of current gcode file to serial port
-var strRx = "";
+var serialData = {
+	isConnected: false,		// Are we connected to the port? 
+	isSendingGcode: false,	// Is there a gcode file in the process if being sent? (false = paused if bufferTx is not empty, false = stopped if bufferTx is empty)
+	activeFile: "",
+	bufferRx: "",			// Receive buffer is a string so that we can properly split the data into commands (separated by \r\n)
+	bufferTx: []			// Bufer of commands to be sent
+}
+
 const port = new SerialPort(settings.port, { baudRate: settings["baud-rate"] }, (err) => {
 	if (!err)
 	{
 		console.log("Connected to " + settings.port);
-		connectedToSerial = true;
+		serialData.isConnected = true;
 
-		port.on('readable', () => { // Event listener to add new data to buffer
-			let buf = port.read();
+		port.on('readable', () => { // Event listener to process Rx data
+			serialData.bufferRx += port.read().toString(); // Read the data and append it to the Rx buffer as a string
 
-			strRx += buf.toString();
+			// Get the locations of CR LF characters in the buffer
+			let indexCR = serialData.bufferRx.indexOf('\r');
+			let indexLF = serialData.bufferRx.indexOf('\n');
 
-			if (strRx.indexOf('\n') == -1) { return; }
-			let command = strRx.substring(0, strRx.indexOf('\n')); // Get current command
-			strRx = strRx.slice(strRx.indexOf('\n') + 1); // Update rx buffer
+			if (indexCR == -1 || indexLF == -1) { console.log("Buffer does not contain CRLF, returning (buf=" + serialData.bufferRx + ")"); return; } // CRLF is not present, return and wait for more data
 
-			console.log("Complete command: " + command);
+			let command = serialData.bufferRx.substring(0, indexCR); // Get current command
+			serialData.bufferRx = serialData.bufferRx.slice(indexLF + 1); // Update rx buffer
 
-			if (sendingGcodeFile && command.indexOf("ok") != -1) 
+			if (command === "") { return; }
+
+			console.log("Command: \"" + command + "\"");
+
+			if (serialData.isSendingGcode && command.indexOf("ok") != -1) 
 			{
 				sendGcodeLine();
-				if (gcodeFileTxBuffer.length == 0) { sendingGcodeFile = false; console.log("Gcode finished!"); }
+				if (serialData.bufferTx.length == 0) 
+				{ 
+					serialData.isSendingGcode = false; 
+					serialData.activeFile = "";
+					console.log("Gcode finished!"); 
+				}
 			}
 
 		});
@@ -101,28 +114,40 @@ function separateLines(string)
 	return lineArr;
 }
 
-function sendGcodeLine()
+// Remove a comment from a line of gcode (starts with ; and ends at the end of the line)
+function removeComment(string)
 {
-	console.log("Sending line: " + gcodeFileTxBuffer[0]);
+	if (string.indexOf(";") == -1) { return string; }
 
-	let dataToSend = gcodeFileTxBuffer[0] + '\n'; // Newline at the end for process
+	return string.slice(0, string.indexOf(";"));
+}
 
-	if (connectedToSerial)
+function sendGcodeCmd(command)
+{
+	if (serialData.isConnected)
 	{
-		port.write(dataToSend, (err) => {
+		port.write(command, (err) => {
 			if (err) 
 			{
 				console.error(err);
 				return;
 			}
-			console.log("Waiting for reply from serial...");
+			console.log("Sent: " + command);
 		});
 	}
 	else
 	{
-		console.log("Serial port not available");
+		console.log("Serial port not available CMD: " + command);
 	}
-	gcodeFileTxBuffer = gcodeFileTxBuffer.splice(1);
+}
+
+function sendGcodeLine()
+{
+	let dataToSend = serialData.bufferTx[0] + '\n'; // Newline at the end for process
+
+	sendGcodeCmd(dataToSend);
+
+	serialData.bufferTx = serialData.bufferTx.splice(1);
 }
 
 const e = require('express');
@@ -145,7 +170,18 @@ app.get('/', function(req, res) {
 	res.render('index', {
 		title: 'PiCNC Controller'
 	});
-	console.log(settings);
+});
+
+app.get('/get-status', (req, res) => {
+
+	let dataToSend = {
+		port: settings.port,
+		isConnected: serialData.isConnected,
+		isActive: serialData.isSendingGcode,
+		activeFile: serialData.activeFile
+	};
+	res.send(dataToSend);
+	res.end();
 });
 
 // Send list of files to client 
@@ -157,6 +193,21 @@ app.post('/get-file-list', (req, res) => {
 	res.end();
 });
 
+app.post('/send-cmd', (req, res) => {
+	let form = new formidable.IncomingForm();
+
+	form.parse(req, (err, fields) => {
+		if (err) { console.error(err); }
+
+		let command = fields.gcodeCommand.trim().toUpperCase(); // Remove unneeded whitespace and make uppercase
+
+		sendGcodeCmd(command + "\n"); // Grbl requires \n to process command
+	});
+
+	res.writeHead(301, { Location: '/'} );
+	res.end();
+});
+
 // Upload a gcode file (TODO: check if the file is actually GCODE)
 app.post('/upload-file', (req,res) => {
 
@@ -164,7 +215,6 @@ app.post('/upload-file', (req,res) => {
 
 	form.parse(req, (err, fields, files) => {
 		var oldpath = files.gcodefile.path;
-
 		
 		var extensionIndex = files.gcodefile.name.lastIndexOf("."); 	 // Where does the file name start and the file extension begin?
 		var fileName = files.gcodefile.name.substr(0, extensionIndex);   // Part of file up to but not including the final dot (.)
@@ -200,7 +250,8 @@ app.post('/upload-file', (req,res) => {
 
 		let file = { // Create new JSON entry
 			name: fileNameFull,
-			uploadDate: formattedDate
+			uploadDate: formattedDate,
+			size: files.gcodefile.size
 		};
 
 		filedata.filelist.push(file); // Append the new file to the JSON file
@@ -225,6 +276,14 @@ app.post('/upload-file', (req,res) => {
 
 	});
 
+});
+
+// TODO: This is dangerously written, disable relative paths somehow?
+app.get('/download-file', (req, res) => {
+	let file = "gcode/" + req.query.fileName;
+	console.log(file);
+	res.download(file);
+	// res.end();
 });
 
 // Delete a file from the database
@@ -256,26 +315,44 @@ app.post('/delete-file', (req, res) => {
 });
 
 
-function removeComment(string)
-{
-	if (string.indexOf(";") == -1) { return string; }
-
-	return string.slice(0, string.indexOf(";"));
-}
-
-
-
-// TODO: start sending gcode
 app.post('/start-file', (req, res) => {
 	console.log("Start " + req.body.fileName);
 	let gcodeFileRaw = fs.readFileSync('./gcode/' + req.body.fileName);
 	let gcode = gcodeFileRaw.toString();
 
-	gcodeFileTxBuffer = gcodeFileTxBuffer.concat(separateLines(gcode));
-	sendingGcodeFile = true;
+	serialData.bufferTx = serialData.bufferTx.concat(separateLines(gcode));
+	serialData.activeFile = req.body.fileName.toString();
+	serialData.isSendingGcode = true;
+
 	sendGcodeLine();
+	
 	res.end();
 });
+
+app.get('/stop-file', (req, res) => {
+	serialData.bufferTx = []; // Empty the tx buffer
+	serialData.isSendingGcode = false;
+	serialData.activeFile = "";
+
+	res.end();
+});
+
+// Halt the sending of gcode but don't clear the buffer
+app.get('/pause-file', (req, res) => {
+	serialData.isSendingGcode = false;
+
+	res.end();
+});
+
+// Resume operation of gcode sending
+app.get('/resume-file', (req, res) => {
+	serialData.isSendingGcode = true;
+
+	sendGcodeLine();
+
+	res.end();
+});
+
 
 // Set the distance that the move commands will move the axis
 app.post('/setdistance', (req,res) => {

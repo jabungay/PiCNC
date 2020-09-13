@@ -2,6 +2,75 @@
 {
     --btn-colour: rgb(26, 134, 197);
     --btn-colour-hover: rgb(180, 227, 255);
+    font-family: 'Open Sans', sans-serif;
+}
+
+body
+{
+    background-color: white;
+}
+
+.file-div
+{
+    padding: 10px;
+    margin: 10px;
+    border-radius: 20px;
+    border: 2px solid var(--btn-colour);
+    background-color: var(--btn-colour-hover);
+    width: 50%;
+}
+
+.file-name
+{
+    font-size: larger;
+    font-weight: bold;
+}
+
+.file-date
+{
+    color: rgb(63, 63, 63);
+}
+.file-size
+{
+    color: rgb(63, 63, 63);
+}
+
+.ctrlbtn.resume
+{
+    background-color: rgb(57, 201, 0);
+    border: 2px solid rgb(49, 173, 0);
+    color: rgb(64, 64, 64);
+    font-weight: bold;
+}
+.ctrlbtn.pause
+{
+    background-color: rgb(251, 255, 0);
+    border: 2px solid rgb(212, 216, 0);
+    color: rgb(64, 64, 64);
+    font-weight: bold;
+}
+.ctrlbtn.stop
+{
+    background-color: rgb(255, 0, 0);
+    border: 2px solid rgb(216, 0, 0);
+    color: white;
+    font-weight: bold;
+}
+
+.ctrlbtn.resume:hover
+{
+    color: rgb(64, 64, 64);
+    background-color: rgb(49, 173, 0);
+}
+.ctrlbtn.pause:hover
+{
+    color: rgb(64, 64, 64);
+    background-color: rgb(212, 216, 0);
+}
+.ctrlbtn.stop:hover
+{
+    color: white;
+    background-color: rgb(216, 0, 0);;
 }
 
 .ctrlbtn
@@ -9,7 +78,6 @@
     color: white;
     background-color: var(--btn-colour);
     
-    border: none;
     padding: 15px 32px;
     display: inline-block;
     margin: 5px;
@@ -20,9 +88,15 @@
     
     font-size: 16px;
 
-    border: 2px solid var(--btn-colour);;
+    border: 2px solid var(--btn-colour);
 
     transition-duration: 0.25s;
+}
+
+.ctrlbtn:disabled
+{
+    color: rgb(64, 64, 64);
+    background-color: var(--btn-colour-hover);
 }
 
 .ctrlbtn:hover

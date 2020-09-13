@@ -3,6 +3,15 @@ extends default.pug
 
 
 block content 
+	h1.section-header Device Status
+	.status
+		h2#connection-status Serial Connection: unknown
+		.active-file
+			h2#file-active Active File: unknown
+			input.ctrlbtn.resume#btnResume(type='button' value='Resume' onclick='resumeFile(false)')
+			input.ctrlbtn.pause#btnPause(type='button' value='Pause' onclick='pauseFile(false)')
+			input.ctrlbtn.stop#btnStop(type='button' value='Stop' onclick='stopFile(false)')
+	h1.section-header Move Axis
 	.directions
 		.axis#Z
 			input.ctrlbtn.dir(type='button' value='+Z' onclick='moveDir("+Z")')
@@ -13,16 +22,25 @@ block content
 		.axis#X
 			input.ctrlbtn.dir(type='button' value='+X' onclick='moveDir("+X")')
 			input.ctrlbtn.dir(type='button' value='-X' onclick='moveDir("-X")')
+	h1.section-header Set Distance
 	.distances
 		input.ctrlbtn.dir#01mm(type='button' value='0.1 mm' onclick='setDistance(0.1)')
 		input.ctrlbtn.dir#1mm(type='button' value='1.0 mm' onclick='setDistance(1)')
 		input.ctrlbtn.dir#10mm(type='button' value='10 mm' onclick='setDistance(10)')
 		input.ctrlbtn.dir#100mm(type='button' value='100 mm' onclick='setDistance(100)')
+	h1.section-header Send GCODE
+	.sendcmd
+		form(action="/send-cmd" method="POST" enctype="multipart/form-data")
+			input(name="gcodeCommand")
+			input.ctrlbtn(type="submit")
+	h1.section-header Upload File
 	.addfile
 		form(action="/upload-file" method="POST" enctype="multipart/form-data")
 			input.fileupload(type="file" name="gcodefile")
 			input.ctrlbtn(type="submit")
+	h1.section-header Start File
 	.filelist#filelist
+		
 	
 append endScripts
 	script(src="/js/getData.js")
