@@ -27,7 +27,8 @@ var serialData = {
 	isSendingGcode: false,	// Is there a gcode file in the process if being sent? (false = paused if bufferTx is not empty, false = stopped if bufferTx is empty)
 	activeFile: "",
 	bufferRx: "",			// Receive buffer is a string so that we can properly split the data into commands (separated by \r\n)
-	bufferTx: []			// Bufer of commands to be sent
+	bufferTx: [],			// Buffer for tx commands
+	fileTx: []				// Buffer for file
 }
 
 const port = new SerialPort(settings.port, { baudRate: settings["baud-rate"] }, (err) => {
@@ -52,17 +53,26 @@ const port = new SerialPort(settings.port, { baudRate: settings["baud-rate"] }, 
 
 			console.log("Command: \"" + command + "\"");
 
-			if (serialData.isSendingGcode && command.indexOf("ok") != -1) 
+			if (command.indexOf("ok") != -1) // Command being sent is ok (action successful)
 			{
-				sendGcodeLine();
-				if (serialData.bufferTx.length == 0) 
-				{ 
-					serialData.isSendingGcode = false; 
-					serialData.activeFile = "";
-					console.log("Gcode finished!"); 
+				if (serialData.isSendingGcode) // There is some file in progress, send the next line of the file
+				{
+					sendGCODEFileLine();
+					if (serialData.fileTx.length == 0) 
+					{ 
+						serialData.isSendingGcode = false; 
+						serialData.activeFile = "";
+						console.log("Gcode finished!"); 
+					}
+				}
+				else // No file in progress, send the next buffered command
+				{
+					if (serialData.bufferTx.length != 0)
+					{
+						sendGCODEBufferLine();
+					}
 				}
 			}
-
 		});
 	}
 	else
@@ -122,7 +132,21 @@ function removeComment(string)
 	return string.slice(0, string.indexOf(";"));
 }
 
-function sendGcodeCmd(command)
+
+
+function queueGCODE(command)
+{
+	if (serialData.isConnected)
+	{
+		serialData.bufferTx.push(command);
+	}
+	else
+	{
+		console.log("Serial port not available CMD: " + command);
+	}
+}
+
+function sendGCODE(command)
 {
 	if (serialData.isConnected)
 	{
@@ -141,13 +165,23 @@ function sendGcodeCmd(command)
 	}
 }
 
-function sendGcodeLine()
+// Send the next line in the gcode buffer
+function sendGCODEBufferLine()
 {
 	let dataToSend = serialData.bufferTx[0] + '\n'; // Newline at the end for process
 
-	sendGcodeCmd(dataToSend);
+	sendGCODE(dataToSend);
 
 	serialData.bufferTx = serialData.bufferTx.splice(1);
+}
+
+function sendGCODEFileLine()
+{
+	let dataToSend = serialData.fileTx[0] + '\n'; // Newline at the end for process
+
+	sendGCODE(dataToSend);
+
+	serialData.fileTx = serialData.fileTx.splice(1);
 }
 
 const e = require('express');
@@ -201,7 +235,8 @@ app.post('/send-cmd', (req, res) => {
 
 		let command = fields.gcodeCommand.trim().toUpperCase(); // Remove unneeded whitespace and make uppercase
 
-		sendGcodeCmd(command + "\n"); // Grbl requires \n to process command
+		queueGCODE(command + "\n"); // Grbl requires \n to process command
+		sendGCODEBufferLine();
 	});
 
 	res.writeHead(301, { Location: '/'} );
@@ -320,17 +355,17 @@ app.post('/start-file', (req, res) => {
 	let gcodeFileRaw = fs.readFileSync('./gcode/' + req.body.fileName);
 	let gcode = gcodeFileRaw.toString();
 
-	serialData.bufferTx = serialData.bufferTx.concat(separateLines(gcode));
+	serialData.fileTx = serialData.fileTx.concat(separateLines(gcode));
 	serialData.activeFile = req.body.fileName.toString();
 	serialData.isSendingGcode = true;
 
-	sendGcodeLine();
+	sendGCODEFileLine();
 	
 	res.end();
 });
 
 app.get('/stop-file', (req, res) => {
-	serialData.bufferTx = []; // Empty the tx buffer
+	serialData.fileTx = []; // Empty the tx buffer
 	serialData.isSendingGcode = false;
 	serialData.activeFile = "";
 
@@ -348,7 +383,7 @@ app.get('/pause-file', (req, res) => {
 app.get('/resume-file', (req, res) => {
 	serialData.isSendingGcode = true;
 
-	sendGcodeLine();
+	sendGCODEFileLine();
 
 	res.end();
 });
@@ -376,7 +411,14 @@ app.post('/setdistance', (req,res) => {
 
 // Move the axis (TODO)
 app.post('/movedir', (req,res) => {
-	console.log(req.body);
+	
+	let cmd = "G1 " + req.body.axis + (settings["travel-distance"] * req.body.dir).toString() + " F" + settings["feed-rate"];
+	queueGCODE("G91"); 	// Relative positioning
+	queueGCODE(cmd); // Move
+	queueGCODE("G90"); 	// Absolute positioning
+
+	sendGCODEBufferLine(); // Start sending the buffer
+
 	// console.log(res);
 	// port.write('Hello, world!');
 	res.end();

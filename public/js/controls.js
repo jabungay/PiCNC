@@ -94,9 +94,9 @@ function deleteFile(confirmed, filename)
   }
 }
 
-function moveDir(direction)
+function moveDir(dir, axis)
 {
-    $.post("/movedir", {'dir': direction}, (data, status) => {
+    $.post("/movedir", {dir: dir, axis: axis}, (data, status) => {
 
     });
 }
