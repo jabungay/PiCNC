@@ -23,7 +23,7 @@
     "express-validator": "^6.6.0",
     "formidable": "^1.2.2",
     "jquery": "^3.5.1",
-    "pug": "^3.0.0",
+    "pug": "^3.0.1",
     "serialport": "^9.0.1"
   },
   "devDependencies": {
